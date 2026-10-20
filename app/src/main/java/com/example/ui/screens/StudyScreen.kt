@@ -10,13 +10,13 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.HelpOutline
+import androidx.compose.material.icons.automirrored.filled.Undo
 import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material.icons.filled.CheckCircle
-import androidx.compose.material.icons.filled.HelpOutline
 import androidx.compose.material.icons.filled.LockOpen
 import androidx.compose.material.icons.filled.School
 import androidx.compose.material.icons.filled.RestartAlt
-import androidx.compose.material.icons.filled.Undo
 import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.border
@@ -332,7 +332,7 @@ fun StudyScreen(
                                         modifier = Modifier.height(28.dp),
                                         contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
                                     ) {
-                                        Icon(Icons.Default.Undo, "Undo", tint = if (inlineHistory.isNotEmpty()) CyberCyan else MutedText, modifier = Modifier.size(14.dp))
+                                        Icon(Icons.AutoMirrored.Filled.Undo, "Undo", tint = if (inlineHistory.isNotEmpty()) CyberCyan else MutedText, modifier = Modifier.size(14.dp))
                                         Spacer(modifier = Modifier.width(4.dp))
                                         Text("UNDO", color = if (inlineHistory.isNotEmpty()) CyberCyan else MutedText, fontSize = 10.sp, fontFamily = FontFamily.Monospace)
                                     }
@@ -456,7 +456,7 @@ fun StudyScreen(
                     Column(modifier = Modifier.padding(16.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(
-                                imageVector = Icons.Default.HelpOutline,
+                                imageVector = Icons.AutoMirrored.Filled.HelpOutline,
                                 contentDescription = "Quiz",
                                 tint = BrightPink,
                                 modifier = Modifier.size(20.dp)
@@ -573,7 +573,7 @@ fun StudyScreen(
                             ) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
                                     Icon(
-                                        imageVector = if (quizCorrect) Icons.Default.CheckCircle else Icons.Default.HelpOutline,
+                                        imageVector = if (quizCorrect) Icons.Default.CheckCircle else Icons.AutoMirrored.Filled.HelpOutline,
                                         contentDescription = "Result",
                                         tint = if (quizCorrect) NeonGreen else BrightPink,
                                         modifier = Modifier.size(20.dp)

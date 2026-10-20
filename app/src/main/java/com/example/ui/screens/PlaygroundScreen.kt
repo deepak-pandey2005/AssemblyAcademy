@@ -11,6 +11,7 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Undo
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -259,7 +260,7 @@ fun PlaygroundScreen(
 
                 // ◀ Backward
                 TextButton(onClick = { viewModel.stepBackward() }) {
-                    Icon(Icons.Default.Undo, contentDescription = "Back", tint = CyberCyan, modifier = Modifier.size(16.dp))
+                    Icon(Icons.AutoMirrored.Filled.Undo, contentDescription = "Back", tint = CyberCyan, modifier = Modifier.size(16.dp))
                     Spacer(modifier = Modifier.width(4.dp))
                     Text("UNDO", color = CyberCyan, fontSize = 11.sp, fontFamily = FontFamily.Monospace)
                 }

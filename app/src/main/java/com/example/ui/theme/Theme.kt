@@ -36,12 +36,9 @@ fun MyApplicationTheme(
   if (!view.isInEditMode) {
     SideEffect {
       val window = (view.context as Activity).window
-      window.statusBarColor = colorScheme.background.toArgb()
-      window.navigationBarColor = colorScheme.surface.toArgb()
       val insetsController = WindowCompat.getInsetsController(window, view)
-      // Since background is light, we want dark icons (isAppearanceLightStatusBars = true)
-      insetsController.isAppearanceLightStatusBars = true
-      insetsController.isAppearanceLightNavigationBars = true
+      insetsController.isAppearanceLightStatusBars = false
+      insetsController.isAppearanceLightNavigationBars = false
     }
   }
 
