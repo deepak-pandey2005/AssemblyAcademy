@@ -1,0 +1,6 @@
+{
+  "name": "Assembly Academy",
+  "description": "Master Assembly Language. Interactive lessons, simulator, and step-by-step register debugging for x86, ARM, OS Compiler, and GPU architecture.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
