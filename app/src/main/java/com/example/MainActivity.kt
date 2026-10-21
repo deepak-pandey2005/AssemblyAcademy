@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.BugReport
+import androidx.compose.material.icons.filled.DeveloperBoard
 import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.School
 import androidx.compose.material3.Icon
@@ -35,6 +36,7 @@ import androidx.compose.ui.unit.sp
 import com.example.ui.screens.LessonsScreen
 import com.example.ui.screens.PlaygroundScreen
 import com.example.ui.screens.ProfileScreen
+import com.example.ui.screens.SiliconRegisterLabScreen
 import com.example.ui.screens.StudyScreen
 import com.example.ui.theme.CyberCyan
 import com.example.ui.theme.DarkBackground
@@ -82,6 +84,33 @@ class MainActivity : ComponentActivity() {
                                     Icon(
                                         imageVector = Icons.Default.School,
                                         contentDescription = "Syllabus"
+                                    )
+                                },
+                                colors = NavigationBarItemDefaults.colors(
+                                    selectedIconColor = TerminalBlack,
+                                    selectedTextColor = NeonGreen,
+                                    indicatorColor = NeonGreen,
+                                    unselectedIconColor = PureWhite.copy(alpha = 0.6f),
+                                    unselectedTextColor = PureWhite.copy(alpha = 0.6f)
+                                )
+                            )
+
+                            // Silicon Register Lab Navigation
+                            NavigationBarItem(
+                                selected = currentRoute == "silicon_lab",
+                                onClick = { currentRoute = "silicon_lab" },
+                                label = {
+                                    Text(
+                                        "SILICON LAB",
+                                        fontSize = 10.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        fontFamily = FontFamily.Monospace
+                                    )
+                                },
+                                icon = {
+                                    Icon(
+                                        imageVector = Icons.Default.DeveloperBoard,
+                                        contentDescription = "Silicon Lab"
                                     )
                                 },
                                 colors = NavigationBarItemDefaults.colors(
@@ -168,6 +197,19 @@ class MainActivity : ComponentActivity() {
                                     onOpenTutorialLesson = { lesson ->
                                         activeTutorialLesson = lesson
                                         currentRoute = "interactive_tutorial"
+                                    },
+                                    onOpenSiliconLab = {
+                                        currentRoute = "silicon_lab"
+                                    }
+                                )
+                            }
+                            "silicon_lab" -> {
+                                SiliconRegisterLabScreen(
+                                    viewModel = viewModel,
+                                    onNavigateToDebugger = { code ->
+                                        viewModel.updatePlaygroundCode(code)
+                                        viewModel.resetCpu(com.example.model.Architecture.X86)
+                                        currentRoute = "sandbox"
                                     }
                                 )
                             }

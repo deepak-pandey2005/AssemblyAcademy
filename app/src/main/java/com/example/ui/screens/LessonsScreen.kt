@@ -44,6 +44,7 @@ fun LessonsScreen(
     onTopicSelected: (Topic) -> Unit,
     onOpenX86Curriculum: () -> Unit = {},
     onOpenTutorialLesson: (Lesson) -> Unit = {},
+    onOpenSiliconLab: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val selectedArch by viewModel.selectedArchitecture.collectAsState()
@@ -304,6 +305,90 @@ fun LessonsScreen(
                                     fontSize = 12.sp,
                                     fontFamily = FontFamily.Monospace
                                 )
+                            }
+                        }
+                    }
+                }
+            }
+
+            // --- Featured Silicon Register Lab Banner (Change Values & Observe Hardware Impact) ---
+            item {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp)
+                        .padding(bottom = 16.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .clickable { onOpenSiliconLab() }
+                        .testTag("featured_silicon_lab_card"),
+                    colors = CardDefaults.cardColors(containerColor = TerminalDarkGray),
+                    border = BorderStroke(1.5.dp, CyberCyan)
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Surface(
+                                color = CyberCyan.copy(alpha = 0.15f),
+                                shape = RoundedCornerShape(4.dp)
+                            ) {
+                                Text(
+                                    text = "INTERACTIVE HARDWARE LAB",
+                                    color = CyberCyan,
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    fontFamily = FontFamily.Monospace,
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                                )
+                            }
+
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    text = "OPEN LAB",
+                                    color = CyberCyan,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    fontFamily = FontFamily.Monospace
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                                    contentDescription = "Open",
+                                    tint = CyberCyan,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(10.dp))
+                        Text(
+                            text = "Silicon Register Lab: Change Values & Watch Hardware Divergence",
+                            color = PureWhite,
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "Guided missions & live 32-bit transistor sandbox: Mutate EAX, flip bits, trigger Zero/Overflow flags, and watch how the computer fundamentally changes its branch and stack execution pathways.",
+                            color = MutedText,
+                            fontSize = 12.sp,
+                            lineHeight = 17.sp
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Surface(color = TerminalBlack, shape = RoundedCornerShape(4.dp)) {
+                                Text("6 Guided Missions", color = NeonGreen, fontSize = 11.sp, fontFamily = FontFamily.Monospace, modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
+                            }
+                            Surface(color = TerminalBlack, shape = RoundedCornerShape(4.dp)) {
+                                Text("32-Bit Bit Flip", color = CyberCyan, fontSize = 11.sp, fontFamily = FontFamily.Monospace, modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
+                            }
+                            Surface(color = TerminalBlack, shape = RoundedCornerShape(4.dp)) {
+                                Text("Live ALU Gates", color = AlertOrange, fontSize = 11.sp, fontFamily = FontFamily.Monospace, modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
                             }
                         }
                     }
