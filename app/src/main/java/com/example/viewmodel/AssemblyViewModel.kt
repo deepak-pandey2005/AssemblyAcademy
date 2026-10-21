@@ -77,6 +77,24 @@ class AssemblyViewModel(application: Application) : AndroidViewModel(application
 
     private val cpuHistory = mutableListOf<CpuState>()
 
+    // Real-time register monitoring tracking
+    data class RegisterChange(
+        val regName: String,
+        val oldValue: Int,
+        val newValue: Int,
+        val stepIndex: Int,
+        val instruction: String = ""
+    )
+
+    private val _modifiedRegisters = MutableStateFlow<Set<String>>(emptySet())
+    val modifiedRegisters: StateFlow<Set<String>> = _modifiedRegisters.asStateFlow()
+
+    private val _previousRegisters = MutableStateFlow<Map<String, Int>>(emptyMap())
+    val previousRegisters: StateFlow<Map<String, Int>> = _previousRegisters.asStateFlow()
+
+    private val _registerHistory = MutableStateFlow<List<RegisterChange>>(emptyList())
+    val registerHistory: StateFlow<List<RegisterChange>> = _registerHistory.asStateFlow()
+
     private val _isPlaying = MutableStateFlow(false)
     val isPlaying: StateFlow<Boolean> = _isPlaying.asStateFlow()
 
@@ -126,6 +144,9 @@ class AssemblyViewModel(application: Application) : AndroidViewModel(application
     fun resetCpu(arch: Architecture = _selectedArchitecture.value) {
         stopPlayback()
         cpuHistory.clear()
+        _previousRegisters.value = emptyMap()
+        _modifiedRegisters.value = emptySet()
+        _registerHistory.value = emptyList()
         _cpuState.value = AssemblySimulator.createInitialState(arch)
     }
 
@@ -142,9 +163,25 @@ class AssemblyViewModel(application: Application) : AndroidViewModel(application
         _breakpoints.value = emptySet()
     }
 
+    fun clearRegisterHistory() {
+        _registerHistory.value = emptyList()
+    }
+
     fun updateRegisterValue(regName: String, value: Int) {
         val currentRegs = _cpuState.value.registers.toMutableMap()
+        val oldVal = currentRegs[regName.uppercase()] ?: 0
         currentRegs[regName.uppercase()] = value
+        
+        _previousRegisters.value = _cpuState.value.registers
+        _modifiedRegisters.value = setOf(regName.uppercase())
+        _registerHistory.value = (_registerHistory.value + RegisterChange(
+            regName = regName.uppercase(),
+            oldValue = oldVal,
+            newValue = value,
+            stepIndex = _cpuState.value.ip + 1,
+            instruction = "Manual Edit: $regName = $value"
+        )).takeLast(40)
+
         _cpuState.value = _cpuState.value.copy(
             registers = currentRegs,
             explanation = "Manual Override: Register $regName updated to $value."
@@ -171,6 +208,34 @@ class AssemblyViewModel(application: Application) : AndroidViewModel(application
         }
 
         val nextState = AssemblySimulator.executeStep(currentState, lines)
+        
+        // Real-time register change detection
+        val changedRegs = mutableSetOf<String>()
+        val currentLineCode = lines.getOrNull(currentState.ip)?.trim() ?: ""
+        val newChanges = mutableListOf<RegisterChange>()
+
+        nextState.registers.forEach { (reg, newVal) ->
+            val oldVal = currentState.registers[reg] ?: 0
+            if (oldVal != newVal) {
+                changedRegs.add(reg)
+                newChanges.add(
+                    RegisterChange(
+                        regName = reg,
+                        oldValue = oldVal,
+                        newValue = newVal,
+                        stepIndex = currentState.ip + 1,
+                        instruction = currentLineCode
+                    )
+                )
+            }
+        }
+
+        _previousRegisters.value = currentState.registers
+        _modifiedRegisters.value = changedRegs
+        if (newChanges.isNotEmpty()) {
+            _registerHistory.value = (_registerHistory.value + newChanges).takeLast(40)
+        }
+
         _cpuState.value = nextState
 
         // Record execution count in stats
@@ -182,6 +247,14 @@ class AssemblyViewModel(application: Application) : AndroidViewModel(application
     fun stepBackward() {
         if (cpuHistory.isNotEmpty()) {
             val prevState = cpuHistory.removeAt(cpuHistory.size - 1)
+            val changedRegs = mutableSetOf<String>()
+            _cpuState.value.registers.forEach { (reg, currentVal) ->
+                if ((prevState.registers[reg] ?: 0) != currentVal) {
+                    changedRegs.add(reg)
+                }
+            }
+            _previousRegisters.value = _cpuState.value.registers
+            _modifiedRegisters.value = changedRegs
             _cpuState.value = prevState
         }
     }

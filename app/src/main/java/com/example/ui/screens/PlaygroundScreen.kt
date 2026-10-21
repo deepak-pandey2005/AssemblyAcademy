@@ -397,59 +397,10 @@ fun PlaygroundScreen(
             ) {
                 when (activeTab) {
                     "registers" -> {
-                        // Registers Grid View
-                        val regsList = cpuState.registers.toList()
-                        LazyVerticalGrid(
-                            columns = GridCells.Fixed(2),
-                            horizontalArrangement = Arrangement.spacedBy(10.dp),
-                            verticalArrangement = Arrangement.spacedBy(10.dp),
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(200.dp)
-                        ) {
-                            items(regsList) { (regName, regVal) ->
-                                Box(
-                                    modifier = Modifier
-                                        .clip(RoundedCornerShape(6.dp))
-                                        .background(TerminalDarkGray)
-                                        .border(1.dp, TerminalLightGray, RoundedCornerShape(6.dp))
-                                        .clickable {
-                                            editingRegisterName = regName
-                                            editingRegisterValue = regVal.toString()
-                                        }
-                                        .padding(10.dp)
-                                ) {
-                                    Column {
-                                        Text(
-                                            text = regName,
-                                            color = NeonGreen,
-                                            fontSize = 10.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            fontFamily = FontFamily.Monospace
-                                        )
-                                        Spacer(modifier = Modifier.height(2.dp))
-                                        Text(
-                                            text = regVal.toString(),
-                                            color = PureWhite,
-                                            fontSize = 14.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            fontFamily = FontFamily.Monospace
-                                        )
-                                        Spacer(modifier = Modifier.height(2.dp))
-                                        
-                                        // Hex & Binary
-                                        val hexStr = "0x" + regVal.toString(16).uppercase()
-                                        val binStr = regVal.toString(2).padStart(8, '0')
-                                        Text(
-                                            text = "HEX: $hexStr  BIN: $binStr",
-                                            color = MutedText,
-                                            fontSize = 9.sp,
-                                            fontFamily = FontFamily.Monospace
-                                        )
-                                    }
-                                }
-                            }
-                        }
+                        VisualRegisterMonitorView(
+                            viewModel = viewModel,
+                            modifier = Modifier.fillMaxWidth()
+                        )
                     }
                     
                     "memory" -> {

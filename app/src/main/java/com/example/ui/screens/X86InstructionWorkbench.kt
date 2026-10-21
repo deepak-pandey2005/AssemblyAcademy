@@ -133,6 +133,8 @@ fun X86InstructionWorkbench(
         mutableStateOf(AssemblySimulator.createInitialState(Architecture.X86))
     }
     val history = remember(selectedScenario) { mutableStateListOf<CpuState>() }
+    var modifiedRegs by remember(selectedScenario) { mutableStateOf<Set<String>>(emptySet()) }
+    var previousRegs by remember(selectedScenario) { mutableStateOf<Map<String, Int>>(emptyMap()) }
 
     Column(
         modifier = modifier
@@ -347,6 +349,8 @@ fun X86InstructionWorkbench(
                 onClick = {
                     cpuState = AssemblySimulator.createInitialState(Architecture.X86)
                     history.clear()
+                    modifiedRegs = emptySet()
+                    previousRegs = emptyMap()
                 },
                 modifier = Modifier
                     .weight(1f)
@@ -364,6 +368,14 @@ fun X86InstructionWorkbench(
                 onClick = {
                     history.add(cpuState)
                     val nextState = AssemblySimulator.executeStep(cpuState, codeLines)
+                    val changed = mutableSetOf<String>()
+                    nextState.registers.forEach { (reg, v) ->
+                        if ((cpuState.registers[reg] ?: 0) != v) {
+                            changed.add(reg)
+                        }
+                    }
+                    previousRegs = cpuState.registers
+                    modifiedRegs = changed
                     cpuState = nextState
                 },
                 modifier = Modifier
@@ -380,19 +392,41 @@ fun X86InstructionWorkbench(
         Spacer(modifier = Modifier.height(16.dp))
 
         // --- Live Register File Display ---
-        Text(
-            text = "LIVE REGISTERS",
-            color = MutedText,
-            fontSize = 11.sp,
-            fontWeight = FontWeight.Bold,
-            fontFamily = FontFamily.Monospace
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "LIVE REGISTERS",
+                color = MutedText,
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold,
+                fontFamily = FontFamily.Monospace
+            )
+            if (modifiedRegs.isNotEmpty()) {
+                Surface(
+                    color = AlertOrange.copy(alpha = 0.2f),
+                    shape = RoundedCornerShape(4.dp),
+                    border = BorderStroke(1.dp, AlertOrange)
+                ) {
+                    Text(
+                        text = "${modifiedRegs.size} MODIFIED",
+                        color = AlertOrange,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        fontFamily = FontFamily.Monospace,
+                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                    )
+                }
+            }
+        }
         Spacer(modifier = Modifier.height(8.dp))
 
         Card(
             modifier = Modifier.fillMaxWidth(),
             colors = CardDefaults.cardColors(containerColor = TerminalDarkGray),
-            border = BorderStroke(1.dp, TerminalLightGray)
+            border = BorderStroke(1.dp, if (modifiedRegs.isNotEmpty()) AlertOrange.copy(alpha = 0.6f) else TerminalLightGray)
         ) {
             Column(modifier = Modifier.padding(12.dp)) {
                 listOf(
@@ -409,21 +443,62 @@ fun X86InstructionWorkbench(
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         rowRegs.forEach { (name, value) ->
+                            val isMod = modifiedRegs.contains(name)
+                            val prev = previousRegs[name]
+
                             Box(
                                 modifier = Modifier
                                     .weight(1f)
                                     .clip(RoundedCornerShape(6.dp))
-                                    .background(TerminalBlack)
-                                    .border(BorderStroke(1.dp, TerminalLightGray), RoundedCornerShape(6.dp))
-                                    .padding(horizontal = 10.dp, vertical = 6.dp)
+                                    .background(if (isMod) TerminalDarkGray else TerminalBlack)
+                                    .border(
+                                        BorderStroke(
+                                            if (isMod) 1.5.dp else 1.dp,
+                                            if (isMod) AlertOrange else TerminalLightGray
+                                        ),
+                                        RoundedCornerShape(6.dp)
+                                    )
+                                    .padding(horizontal = 10.dp, vertical = 8.dp)
                             ) {
                                 Row(
                                     modifier = Modifier.fillMaxWidth(),
                                     horizontalArrangement = Arrangement.SpaceBetween,
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Text(name, color = CyberCyan, fontWeight = FontWeight.Bold, fontFamily = FontFamily.Monospace, fontSize = 12.sp)
-                                    Text("$value", color = PureWhite, fontFamily = FontFamily.Monospace, fontSize = 12.sp)
+                                    Column {
+                                        Text(
+                                            text = name,
+                                            color = if (isMod) AlertOrange else CyberCyan,
+                                            fontWeight = FontWeight.Bold,
+                                            fontFamily = FontFamily.Monospace,
+                                            fontSize = 12.sp
+                                        )
+                                        if (isMod && prev != null && prev != value) {
+                                            val d = value - prev
+                                            val dStr = if (d > 0) "+$d" else "$d"
+                                            Text(
+                                                text = "Δ $dStr (was $prev)",
+                                                color = AlertOrange,
+                                                fontSize = 9.sp,
+                                                fontFamily = FontFamily.Monospace
+                                            )
+                                        }
+                                    }
+                                    Column(horizontalAlignment = Alignment.End) {
+                                        Text(
+                                            text = "$value",
+                                            color = if (isMod) NeonGreen else PureWhite,
+                                            fontWeight = FontWeight.Bold,
+                                            fontFamily = FontFamily.Monospace,
+                                            fontSize = 13.sp
+                                        )
+                                        Text(
+                                            text = "0x" + value.toString(16).uppercase(),
+                                            color = MutedText,
+                                            fontSize = 9.sp,
+                                            fontFamily = FontFamily.Monospace
+                                        )
+                                    }
                                 }
                             }
                         }
