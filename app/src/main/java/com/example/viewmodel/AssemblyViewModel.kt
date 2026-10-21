@@ -92,6 +92,12 @@ class AssemblyViewModel(application: Application) : AndroidViewModel(application
     private val _previousRegisters = MutableStateFlow<Map<String, Int>>(emptyMap())
     val previousRegisters: StateFlow<Map<String, Int>> = _previousRegisters.asStateFlow()
 
+    private val _modifiedMemoryAddresses = MutableStateFlow<Set<Int>>(emptySet())
+    val modifiedMemoryAddresses: StateFlow<Set<Int>> = _modifiedMemoryAddresses.asStateFlow()
+
+    private val _previousMemory = MutableStateFlow<Map<Int, Int>>(emptyMap())
+    val previousMemory: StateFlow<Map<Int, Int>> = _previousMemory.asStateFlow()
+
     private val _registerHistory = MutableStateFlow<List<RegisterChange>>(emptyList())
     val registerHistory: StateFlow<List<RegisterChange>> = _registerHistory.asStateFlow()
 
@@ -147,6 +153,8 @@ class AssemblyViewModel(application: Application) : AndroidViewModel(application
         _previousRegisters.value = emptyMap()
         _modifiedRegisters.value = emptySet()
         _registerHistory.value = emptyList()
+        _previousMemory.value = emptyMap()
+        _modifiedMemoryAddresses.value = emptySet()
         _cpuState.value = AssemblySimulator.createInitialState(arch)
     }
 
@@ -165,6 +173,10 @@ class AssemblyViewModel(application: Application) : AndroidViewModel(application
 
     fun clearRegisterHistory() {
         _registerHistory.value = emptyList()
+    }
+
+    fun clearModifiedMemory() {
+        _modifiedMemoryAddresses.value = emptySet()
     }
 
     fun updateRegisterValue(regName: String, value: Int) {
@@ -191,9 +203,64 @@ class AssemblyViewModel(application: Application) : AndroidViewModel(application
     fun updateMemoryValue(address: Int, value: Int) {
         val currentMem = _cpuState.value.memory.toMutableMap()
         currentMem[address] = value
+        _modifiedMemoryAddresses.value = setOf(address, address + 1, address + 2, address + 3)
         _cpuState.value = _cpuState.value.copy(
             memory = currentMem,
-            explanation = "Manual Override: Memory address $address updated to $value."
+            explanation = "Manual Override: Memory address 0x${address.toString(16).uppercase()} updated to $value."
+        )
+    }
+
+    fun updateMemoryByte(address: Int, byteVal: Int) {
+        val currentMem = _cpuState.value.memory.toMutableMap()
+        val aligned = (address / 4) * 4
+        val byteOffset = address - aligned
+        val existingDword = currentMem[aligned] ?: 0
+        val mask = (0xFF shl (byteOffset * 8)).inv()
+        val newDword = (existingDword and mask) or ((byteVal and 0xFF) shl (byteOffset * 8))
+        currentMem[aligned] = newDword
+        _modifiedMemoryAddresses.value = setOf(address, aligned)
+        _cpuState.value = _cpuState.value.copy(
+            memory = currentMem,
+            explanation = "Manual Override: Byte at 0x${address.toString(16).uppercase()} set to 0x${(byteVal and 0xFF).toString(16).uppercase().padStart(2, '0')}."
+        )
+    }
+
+    fun updateMemoryString(startAddress: Int, text: String) {
+        val currentMem = _cpuState.value.memory.toMutableMap()
+        val modifiedAddrs = mutableSetOf<Int>()
+        val bytes = text.toByteArray(Charsets.US_ASCII)
+        for (i in bytes.indices) {
+            val addr = startAddress + i
+            val aligned = (addr / 4) * 4
+            val byteOffset = addr - aligned
+            val existingDword = currentMem[aligned] ?: 0
+            val mask = (0xFF shl (byteOffset * 8)).inv()
+            val newDword = (existingDword and mask) or ((bytes[i].toInt() and 0xFF) shl (byteOffset * 8))
+            currentMem[aligned] = newDword
+            modifiedAddrs.add(addr)
+            modifiedAddrs.add(aligned)
+        }
+        _modifiedMemoryAddresses.value = modifiedAddrs
+        _cpuState.value = _cpuState.value.copy(
+            memory = currentMem,
+            explanation = "Manual Override: Injected string \"$text\" at 0x${startAddress.toString(16).uppercase()}."
+        )
+    }
+
+    fun clearMemory() {
+        _modifiedMemoryAddresses.value = emptySet()
+        _cpuState.value = _cpuState.value.copy(
+            memory = emptyMap(),
+            explanation = "RAM cleared: All memory addresses reset to 0x00."
+        )
+    }
+
+    fun resetMemoryDefaults(arch: Architecture = _selectedArchitecture.value) {
+        val defaultState = AssemblySimulator.createInitialState(arch)
+        _modifiedMemoryAddresses.value = defaultState.memory.keys
+        _cpuState.value = _cpuState.value.copy(
+            memory = defaultState.memory,
+            explanation = "RAM restored to architecture default template."
         )
     }
 
@@ -230,11 +297,26 @@ class AssemblyViewModel(application: Application) : AndroidViewModel(application
             }
         }
 
+        // Real-time memory change detection
+        val changedMem = mutableSetOf<Int>()
+        nextState.memory.forEach { (addr, newVal) ->
+            val oldVal = currentState.memory[addr]
+            if (oldVal != newVal) {
+                changedMem.add(addr)
+                changedMem.add(addr + 1)
+                changedMem.add(addr + 2)
+                changedMem.add(addr + 3)
+            }
+        }
+
         _previousRegisters.value = currentState.registers
         _modifiedRegisters.value = changedRegs
         if (newChanges.isNotEmpty()) {
             _registerHistory.value = (_registerHistory.value + newChanges).takeLast(40)
         }
+
+        _previousMemory.value = currentState.memory
+        _modifiedMemoryAddresses.value = changedMem
 
         _cpuState.value = nextState
 

@@ -665,6 +665,23 @@ private fun RegisterCard(
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
+                    if (isPointerOrIndexRegister(regName, architecture) && regValue in 0..0xFFFF) {
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Surface(
+                            color = CyberCyan.copy(alpha = 0.15f),
+                            shape = RoundedCornerShape(3.dp),
+                            border = BorderStroke(0.5.dp, CyberCyan)
+                        ) {
+                            Text(
+                                text = "-> RAM 0x" + regValue.toString(16).uppercase().padStart(4, '0'),
+                                color = CyberCyan,
+                                fontSize = 8.sp,
+                                fontFamily = FontFamily.Monospace,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
+                            )
+                        }
+                    }
                 }
 
                 // Status Badges & Pin/Expand Icons

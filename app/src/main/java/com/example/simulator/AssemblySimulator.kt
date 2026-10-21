@@ -293,9 +293,11 @@ object AssemblySimulator {
                     val value = getRegOrMemValue(regs, memory, src)
                     stack.add(value)
                     val currentEsp = regs["ESP"] ?: regs["RSP"] ?: 1000
-                    setRegisterValue(regs, "ESP", currentEsp - 4)
-                    setRegisterValue(regs, "RSP", currentEsp - 4)
-                    explanation = "PUSH: Pushed $value onto Stack. ESP decremented to ${currentEsp - 4}."
+                    val newEsp = currentEsp - 4
+                    setRegisterValue(regs, "ESP", newEsp)
+                    setRegisterValue(regs, "RSP", newEsp)
+                    memory[newEsp] = value
+                    explanation = "PUSH: Pushed $value onto Stack. ESP decremented to $newEsp and written to RAM."
                 }
             }
             "POP" -> {
@@ -540,6 +542,7 @@ object AssemblySimulator {
     // --- ARM ENGINE ---
     private fun executeARM(state: CpuState, opcode: String, operands: List<String>, nextIp: Int): CpuState {
         val regs = state.registers.toMutableMap()
+        val memory = state.memory.toMutableMap()
         val flags = state.flags.toMutableMap()
         var explanation = ""
         var targetIp = nextIp
@@ -612,6 +615,7 @@ object AssemblySimulator {
                     val dest = operands[1].replace("[", "").replace("]", "")
                     val address = getRegValue(regs, dest)
                     val value = getRegValue(regs, src)
+                    memory[address] = value
                     explanation = "STR: Stored value in $src ($value) into memory at [$dest] ($address)."
                 }
             }
@@ -645,6 +649,7 @@ object AssemblySimulator {
         return state.copy(
             ip = targetIp,
             registers = regs,
+            memory = memory,
             flags = flags,
             explanation = explanation
         )
