@@ -14,6 +14,7 @@ import com.example.model.Topic
 import com.example.network.GeminiService
 import com.example.simulator.AssemblySimulator
 import com.example.simulator.CpuState
+import com.example.simulator.X86RegisterStateManager
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -25,6 +26,8 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 class AssemblyViewModel(application: Application) : AndroidViewModel(application) {
+
+    val x86StateManager = X86RegisterStateManager()
 
     private val repository: UserProgressRepository
 
@@ -156,6 +159,7 @@ class AssemblyViewModel(application: Application) : AndroidViewModel(application
         _previousMemory.value = emptyMap()
         _modifiedMemoryAddresses.value = emptySet()
         _cpuState.value = AssemblySimulator.createInitialState(arch)
+        x86StateManager.syncFromMap(_cpuState.value.registers, _cpuState.value.flags)
     }
 
     fun toggleBreakpoint(lineIndex: Int) {
@@ -319,11 +323,22 @@ class AssemblyViewModel(application: Application) : AndroidViewModel(application
         _modifiedMemoryAddresses.value = changedMem
 
         _cpuState.value = nextState
+        x86StateManager.syncFromMap(nextState.registers, nextState.flags)
 
         // Record execution count in stats
         viewModelScope.launch {
             repository.recordExecution(1)
         }
+    }
+
+    fun syncFromX86StateManager() {
+        val snapshot = x86StateManager.state.value
+        val currentRegs = _cpuState.value.registers.toMutableMap()
+        currentRegs.putAll(snapshot.toSimulatorMap())
+        _cpuState.value = _cpuState.value.copy(
+            registers = currentRegs,
+            flags = snapshot.toFlagsMap()
+        )
     }
 
     fun stepBackward() {

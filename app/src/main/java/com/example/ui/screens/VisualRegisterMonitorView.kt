@@ -58,7 +58,8 @@ enum class RegisterCategory(val label: String) {
 fun VisualRegisterMonitorView(
     viewModel: AssemblyViewModel,
     modifier: Modifier = Modifier,
-    isCompact: Boolean = false
+    isCompact: Boolean = false,
+    onOpenDashboard: (() -> Unit)? = null
 ) {
     val cpuState by viewModel.cpuState.collectAsState()
     val modifiedRegisters by viewModel.modifiedRegisters.collectAsState()
@@ -72,6 +73,7 @@ fun VisualRegisterMonitorView(
         registerHistory = registerHistory,
         onUpdateRegister = { reg, value -> viewModel.updateRegisterValue(reg, value) },
         onClearHistory = { viewModel.clearRegisterHistory() },
+        onOpenDashboard = onOpenDashboard,
         modifier = modifier,
         isCompact = isCompact
     )
@@ -86,7 +88,8 @@ fun VisualRegisterMonitorContent(
     onUpdateRegister: (String, Int) -> Unit,
     onClearHistory: () -> Unit,
     modifier: Modifier = Modifier,
-    isCompact: Boolean = false
+    isCompact: Boolean = false,
+    onOpenDashboard: (() -> Unit)? = null
 ) {
     var displayFormat by remember { mutableStateOf(RegisterDisplayFormat.HEX) }
     var selectedCategory by remember { mutableStateOf(RegisterCategory.ALL) }
@@ -223,6 +226,35 @@ fun VisualRegisterMonitorContent(
                                 tint = if (registerHistory.isNotEmpty()) NeonGreen else MutedText,
                                 modifier = Modifier.size(16.dp)
                             )
+                        }
+
+                        onOpenDashboard?.let { openDash ->
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(4.dp))
+                                    .background(NeonGreen.copy(alpha = 0.15f))
+                                    .border(BorderStroke(1.dp, NeonGreen), RoundedCornerShape(4.dp))
+                                    .clickable { openDash() }
+                                    .padding(horizontal = 6.dp, vertical = 3.dp)
+                            ) {
+                                Row(verticalAlignment = Alignment.CenterVertically) {
+                                    Icon(
+                                        imageVector = Icons.Default.Dashboard,
+                                        contentDescription = "Reactive Dashboard",
+                                        tint = NeonGreen,
+                                        modifier = Modifier.size(12.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text(
+                                        text = "DASHBOARD",
+                                        color = NeonGreen,
+                                        fontSize = 9.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        fontFamily = FontFamily.Monospace
+                                    )
+                                }
+                            }
                         }
                     }
                 }

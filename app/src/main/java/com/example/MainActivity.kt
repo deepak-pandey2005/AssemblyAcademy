@@ -38,6 +38,7 @@ import com.example.ui.screens.PlaygroundScreen
 import com.example.ui.screens.ProfileScreen
 import com.example.ui.screens.SiliconRegisterLabScreen
 import com.example.ui.screens.StudyScreen
+import com.example.ui.screens.X86ReactiveDashboardScreen
 import com.example.ui.theme.CyberCyan
 import com.example.ui.theme.DarkBackground
 import com.example.ui.theme.MyApplicationTheme
@@ -200,6 +201,20 @@ class MainActivity : ComponentActivity() {
                                     },
                                     onOpenSiliconLab = {
                                         currentRoute = "silicon_lab"
+                                    },
+                                    onOpenX86Dashboard = {
+                                        currentRoute = "x86_dashboard"
+                                    }
+                                )
+                            }
+                            "x86_dashboard" -> {
+                                X86ReactiveDashboardScreen(
+                                    viewModel = viewModel,
+                                    onNavigateBack = { currentRoute = "syllabus" },
+                                    onLaunchInDebugger = { code ->
+                                        viewModel.updatePlaygroundCode(code)
+                                        viewModel.resetCpu(com.example.model.Architecture.X86)
+                                        currentRoute = "sandbox"
                                     }
                                 )
                             }
@@ -248,7 +263,8 @@ class MainActivity : ComponentActivity() {
                             }
                             "sandbox" -> {
                                 PlaygroundScreen(
-                                    viewModel = viewModel
+                                    viewModel = viewModel,
+                                    onOpenReactiveDashboard = { currentRoute = "x86_dashboard" }
                                 )
                             }
                             "profile" -> {

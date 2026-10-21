@@ -45,6 +45,7 @@ fun LessonsScreen(
     onOpenX86Curriculum: () -> Unit = {},
     onOpenTutorialLesson: (Lesson) -> Unit = {},
     onOpenSiliconLab: () -> Unit = {},
+    onOpenX86Dashboard: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val selectedArch by viewModel.selectedArchitecture.collectAsState()
@@ -305,6 +306,96 @@ fun LessonsScreen(
                                     fontSize = 12.sp,
                                     fontFamily = FontFamily.Monospace
                                 )
+                            }
+                        }
+                    }
+                }
+            }
+
+            // --- Featured x86 Central Reactive Register Dashboard Banner ---
+            item {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp)
+                        .padding(bottom = 16.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .clickable { onOpenX86Dashboard() }
+                        .testTag("featured_x86_dashboard_card"),
+                    colors = CardDefaults.cardColors(containerColor = TerminalDarkGray),
+                    border = BorderStroke(1.5.dp, NeonGreen)
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Surface(
+                                color = NeonGreen.copy(alpha = 0.15f),
+                                shape = RoundedCornerShape(4.dp)
+                            ) {
+                                Text(
+                                    text = "CENTRAL STATE MANAGEMENT",
+                                    color = NeonGreen,
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    fontFamily = FontFamily.Monospace,
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                                )
+                            }
+
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    text = "OPEN DASHBOARD",
+                                    color = NeonGreen,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    fontFamily = FontFamily.Monospace
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                                    contentDescription = "Open",
+                                    tint = NeonGreen,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        Text(
+                            text = "x86 CPU Reactive Register Dashboard",
+                            color = PureWhite,
+                            fontSize = 17.sp,
+                            fontWeight = FontWeight.Bold,
+                            fontFamily = FontFamily.Monospace
+                        )
+
+                        Spacer(modifier = Modifier.height(6.dp))
+
+                        Text(
+                            text = "Real-time state simulation of all 32-bit registers (EAX, EBX, ECX, EDX, ESI, EDI, ESP, EBP), sub-register bit propagation (AX, AH, AL), 32-bit transistor matrix, and live EFLAGS condition codes.",
+                            color = MutedText,
+                            fontSize = 12.sp,
+                            lineHeight = 17.sp
+                        )
+
+                        Spacer(modifier = Modifier.height(12.dp))
+
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Surface(color = TerminalBlack, shape = RoundedCornerShape(4.dp)) {
+                                Text("Live StateFlow", color = NeonGreen, fontSize = 11.sp, fontFamily = FontFamily.Monospace, modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
+                            }
+                            Surface(color = TerminalBlack, shape = RoundedCornerShape(4.dp)) {
+                                Text("Bit-Slicing Aliases", color = CyberCyan, fontSize = 11.sp, fontFamily = FontFamily.Monospace, modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
+                            }
+                            Surface(color = TerminalBlack, shape = RoundedCornerShape(4.dp)) {
+                                Text("32-Bit Flipper", color = AlertOrange, fontSize = 11.sp, fontFamily = FontFamily.Monospace, modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
                             }
                         }
                     }

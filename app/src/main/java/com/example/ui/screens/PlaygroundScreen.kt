@@ -36,6 +36,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun PlaygroundScreen(
     viewModel: AssemblyViewModel,
+    onOpenReactiveDashboard: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
     val currentArch by viewModel.selectedArchitecture.collectAsState()
@@ -108,7 +109,17 @@ fun PlaygroundScreen(
                 }
 
                 // File operations
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    onOpenReactiveDashboard?.let { openDash ->
+                        IconButton(onClick = openDash) {
+                            Icon(
+                                imageVector = Icons.Default.Dashboard,
+                                contentDescription = "Reactive Register Dashboard",
+                                tint = NeonGreen,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                    }
                     IconButton(
                         onClick = {
                             programTitle = "Prog_${currentArch.codeName}_" + (System.currentTimeMillis() % 1000)
@@ -399,6 +410,7 @@ fun PlaygroundScreen(
                     "registers" -> {
                         VisualRegisterMonitorView(
                             viewModel = viewModel,
+                            onOpenDashboard = onOpenReactiveDashboard,
                             modifier = Modifier.fillMaxWidth()
                         )
                     }
