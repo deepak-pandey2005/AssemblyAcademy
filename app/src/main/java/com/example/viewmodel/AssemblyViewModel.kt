@@ -251,6 +251,12 @@ class AssemblyViewModel(application: Application) : AndroidViewModel(application
         }
     }
 
+    fun recordCurriculumCompletion(topicId: String, points: Int = 100) {
+        viewModelScope.launch {
+            repository.completeLesson(topicId, points)
+        }
+    }
+
     // --- AI TUTOR API OPERATIONS ---
 
     fun askAiToExplain() {

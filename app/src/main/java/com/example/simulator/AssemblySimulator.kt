@@ -53,7 +53,7 @@ object AssemblySimulator {
         return CpuState(
             architecture = arch,
             registers = initialRegisters,
-            memory = mapOf(100 to 42, 104 to 99),
+            memory = mapOf(100 to 42, 104 to 99, 108 to 15, 112 to 256, 116 to 88, 120 to 777),
             stack = emptyList()
         )
     }
@@ -144,86 +144,176 @@ object AssemblySimulator {
         var explanation = ""
         var targetIp = nextIp
 
+        val isDestMem = isMemoryOperand(operands.getOrNull(0) ?: "")
+        val isSrcMem = isMemoryOperand(operands.getOrNull(1) ?: "")
+
         when (opcode) {
             "MOV" -> {
                 if (operands.size >= 2) {
-                    val dest = operands[0].uppercase()
-                    val src = operands[1]
-                    val value = getRegValue(regs, src)
-                    regs[dest] = value
-                    explanation = "MOV: Copied value $value into register $dest."
+                    val destRaw = operands[0]
+                    val srcRaw = operands[1]
+
+                    if (isDestMem && isSrcMem) {
+                        explanation = "ILLEGAL: Memory-to-Memory MOV is prohibited in x86 hardware! Use a scratch register."
+                    } else if (isDestMem) {
+                        val addr = resolveEffectiveAddress(regs, destRaw)
+                        val value = getRegOrMemValue(regs, memory, srcRaw)
+                        memory[addr] = value
+                        explanation = "MOV [0x${addr.toString(16).uppercase()}]: Wrote $value into RAM at address $addr."
+                    } else {
+                        val destReg = destRaw.uppercase().replace("#", "").trim()
+                        val value = getRegOrMemValue(regs, memory, srcRaw)
+                        setRegisterValue(regs, destReg, value)
+                        val memNote = if (isSrcMem) " (loaded from RAM)" else ""
+                        explanation = "MOV: Set $destReg = $value$memNote."
+                    }
+                }
+            }
+            "LEA" -> {
+                if (operands.size >= 2) {
+                    val destReg = operands[0].uppercase().trim()
+                    val addrExpr = operands[1]
+                    val effectiveAddress = resolveEffectiveAddress(regs, addrExpr)
+                    setRegisterValue(regs, destReg, effectiveAddress)
+                    explanation = "LEA: Computed effective address $effectiveAddress (0x${effectiveAddress.toString(16).uppercase()}) into $destReg without accessing RAM."
+                }
+            }
+            "XCHG" -> {
+                if (operands.size >= 2) {
+                    val op1 = operands[0]
+                    val op2 = operands[1]
+                    val val1 = getRegOrMemValue(regs, memory, op1)
+                    val val2 = getRegOrMemValue(regs, memory, op2)
+
+                    if (isDestMem) {
+                        val addr1 = resolveEffectiveAddress(regs, op1)
+                        memory[addr1] = val2
+                    } else {
+                        setRegisterValue(regs, op1.uppercase(), val2)
+                    }
+
+                    if (isSrcMem) {
+                        val addr2 = resolveEffectiveAddress(regs, op2)
+                        memory[addr2] = val1
+                    } else {
+                        setRegisterValue(regs, op2.uppercase(), val1)
+                    }
+                    explanation = "XCHG: Swapped values ($val1 <-> $val2) between $op1 and $op2."
                 }
             }
             "ADD" -> {
                 if (operands.size >= 2) {
-                    val dest = operands[0].uppercase()
-                    val src = operands[1]
-                    val orig = regs[dest] ?: 0
-                    val addVal = getRegValue(regs, src)
-                    val result = orig + addVal
-                    regs[dest] = result
+                    val destRaw = operands[0]
+                    val srcRaw = operands[1]
+                    val origVal = getRegOrMemValue(regs, memory, destRaw)
+                    val addVal = getRegOrMemValue(regs, memory, srcRaw)
+                    val result = origVal + addVal
+
+                    if (isDestMem) {
+                        val addr = resolveEffectiveAddress(regs, destRaw)
+                        memory[addr] = result
+                        explanation = "ADD [0x${addr.toString(16).uppercase()}]: Added $addVal in-place to memory ($origVal -> $result)."
+                    } else {
+                        val destReg = destRaw.uppercase().trim()
+                        setRegisterValue(regs, destReg, result)
+                        explanation = "ADD: Added $addVal to $destReg ($origVal). Result = $result."
+                    }
                     flags["ZF"] = result == 0
                     flags["SF"] = result < 0
-                    explanation = "ADD: Added $addVal to $dest ($orig). Result is $result."
                 }
             }
             "SUB" -> {
                 if (operands.size >= 2) {
-                    val dest = operands[0].uppercase()
-                    val src = operands[1]
-                    val orig = regs[dest] ?: 0
-                    val subVal = getRegValue(regs, src)
-                    val result = orig - subVal
-                    regs[dest] = result
+                    val destRaw = operands[0]
+                    val srcRaw = operands[1]
+                    val origVal = getRegOrMemValue(regs, memory, destRaw)
+                    val subVal = getRegOrMemValue(regs, memory, srcRaw)
+                    val result = origVal - subVal
+
+                    if (isDestMem) {
+                        val addr = resolveEffectiveAddress(regs, destRaw)
+                        memory[addr] = result
+                        explanation = "SUB [0x${addr.toString(16).uppercase()}]: Subtracted $subVal from RAM at $addr ($origVal -> $result)."
+                    } else {
+                        val destReg = destRaw.uppercase().trim()
+                        setRegisterValue(regs, destReg, result)
+                        explanation = "SUB: Subtracted $subVal from $destReg ($origVal). Result = $result."
+                    }
                     flags["ZF"] = result == 0
                     flags["SF"] = result < 0
-                    explanation = "SUB: Subtracted $subVal from $dest ($orig). Result is $result."
+                    flags["CF"] = origVal < subVal
                 }
             }
             "CMP" -> {
                 if (operands.size >= 2) {
-                    val val1 = getRegValue(regs, operands[0])
-                    val val2 = getRegValue(regs, operands[1])
+                    val val1 = getRegOrMemValue(regs, memory, operands[0])
+                    val val2 = getRegOrMemValue(regs, memory, operands[1])
                     val result = val1 - val2
                     flags["ZF"] = result == 0
                     flags["SF"] = result < 0
                     flags["CF"] = val1 < val2
-                    explanation = "CMP: Compared $val1 with $val2. Flags updated: ZF=${flags["ZF"]}, CF=${flags["CF"]}."
+                    explanation = "CMP: Compared $val1 with $val2. Flags: ZF=${flags["ZF"]}, SF=${flags["SF"]}, CF=${flags["CF"]}."
                 }
             }
             "INC" -> {
                 if (operands.isNotEmpty()) {
-                    val dest = operands[0].uppercase()
-                    val orig = regs[dest] ?: 0
-                    regs[dest] = orig + 1
-                    explanation = "INC: Incremented $dest to ${orig + 1}."
+                    val target = operands[0]
+                    if (isDestMem) {
+                        val addr = resolveEffectiveAddress(regs, target)
+                        val orig = memory[addr] ?: 0
+                        memory[addr] = orig + 1
+                        explanation = "INC [0x${addr.toString(16).uppercase()}]: Incremented memory value from $orig to ${orig + 1}."
+                    } else {
+                        val dest = target.uppercase().trim()
+                        val orig = getRegValue(regs, dest)
+                        setRegisterValue(regs, dest, orig + 1)
+                        explanation = "INC: Incremented $dest to ${orig + 1}."
+                    }
                 }
             }
             "DEC" -> {
                 if (operands.isNotEmpty()) {
-                    val dest = operands[0].uppercase()
-                    val orig = regs[dest] ?: 0
-                    regs[dest] = orig - 1
-                    explanation = "DEC: Decremented $dest to ${orig - 1}."
+                    val target = operands[0]
+                    if (isDestMem) {
+                        val addr = resolveEffectiveAddress(regs, target)
+                        val orig = memory[addr] ?: 0
+                        memory[addr] = orig - 1
+                        explanation = "DEC [0x${addr.toString(16).uppercase()}]: Decremented memory value from $orig to ${orig - 1}."
+                    } else {
+                        val dest = target.uppercase().trim()
+                        val orig = getRegValue(regs, dest)
+                        setRegisterValue(regs, dest, orig - 1)
+                        explanation = "DEC: Decremented $dest to ${orig - 1}."
+                    }
                 }
             }
             "PUSH" -> {
                 if (operands.isNotEmpty()) {
                     val src = operands[0]
-                    val value = getRegValue(regs, src)
+                    val value = getRegOrMemValue(regs, memory, src)
                     stack.add(value)
-                    regs["ESP"] = (regs["ESP"] ?: 1000) - 4
-                    explanation = "PUSH: Pushed value $value onto the Stack. ESP register decremented by 4."
+                    val currentEsp = regs["ESP"] ?: regs["RSP"] ?: 1000
+                    setRegisterValue(regs, "ESP", currentEsp - 4)
+                    setRegisterValue(regs, "RSP", currentEsp - 4)
+                    explanation = "PUSH: Pushed $value onto Stack. ESP decremented to ${currentEsp - 4}."
                 }
             }
             "POP" -> {
                 if (operands.isNotEmpty()) {
-                    val dest = operands[0].uppercase()
+                    val dest = operands[0]
                     if (stack.isNotEmpty()) {
                         val value = stack.removeAt(stack.size - 1)
-                        regs[dest] = value
-                        regs["ESP"] = (regs["ESP"] ?: 1000) + 4
-                        explanation = "POP: Popped value $value off the stack into $dest. ESP incremented."
+                        if (isDestMem) {
+                            val addr = resolveEffectiveAddress(regs, dest)
+                            memory[addr] = value
+                            explanation = "POP: Popped value $value into memory [0x${addr.toString(16).uppercase()}]."
+                        } else {
+                            setRegisterValue(regs, dest.uppercase().trim(), value)
+                            explanation = "POP: Popped value $value off stack into $dest."
+                        }
+                        val currentEsp = regs["ESP"] ?: regs["RSP"] ?: 1000
+                        setRegisterValue(regs, "ESP", currentEsp + 4)
+                        setRegisterValue(regs, "RSP", currentEsp + 4)
                     } else {
                         explanation = "POP Error: Stack is empty!"
                     }
@@ -232,36 +322,39 @@ object AssemblySimulator {
             "JMP" -> {
                 if (operands.isNotEmpty()) {
                     explanation = "JMP: Unconditional jump executed."
-                    // In a toy compiler, jump targets are simulated or advanced by 1-2 lines. We simulate jumps by skipping lines or restarting
-                    targetIp = (targetIp + 1) % 6 // simulated
+                    targetIp = (targetIp + 1) % 6
                 }
             }
             "JE", "JZ" -> {
                 if (state.flags["ZF"] == true) {
-                    explanation = "JE: Jump taken because Zero Flag is active."
+                    explanation = "JE: Jump taken (Zero Flag is 1)."
                     targetIp = (targetIp + 2) % 6
                 } else {
-                    explanation = "JE: Jump not taken (Zero Flag is false)."
+                    explanation = "JE: Jump not taken (Zero Flag is 0)."
                 }
             }
             "JNE", "JNZ" -> {
                 if (state.flags["ZF"] == false) {
-                    explanation = "JNE: Jump taken because Zero Flag is inactive."
+                    explanation = "JNE: Jump taken (Zero Flag is 0)."
                     targetIp = (targetIp + 1) % 6
                 } else {
-                    explanation = "JNE: Jump not taken (Zero Flag is true)."
+                    explanation = "JNE: Jump not taken (Zero Flag is 1)."
                 }
             }
             "XOR" -> {
                 if (operands.size >= 2) {
-                    val dest = operands[0].uppercase()
-                    val src = operands[1]
-                    val orig = regs[dest] ?: 0
-                    val xorVal = getRegValue(regs, src)
+                    val dest = operands[0].uppercase().trim()
+                    val src = operands[1].uppercase().trim()
+                    val orig = getRegValue(regs, dest)
+                    val xorVal = getRegOrMemValue(regs, memory, src)
                     val result = orig xor xorVal
-                    regs[dest] = result
+                    setRegisterValue(regs, dest, result)
                     flags["ZF"] = result == 0
-                    explanation = "XOR: Cleared/XORed register $dest. Result is $result."
+                    if (dest == src) {
+                        explanation = "XOR $dest, $dest: Cleared register $dest to 0 (compiler zeroing idiom). ZF set to 1."
+                    } else {
+                        explanation = "XOR: Bitwise XOR on $dest. Result = $result."
+                    }
                 }
             }
             else -> {
@@ -270,6 +363,7 @@ object AssemblySimulator {
         }
 
         regs["EIP"] = targetIp
+        regs["RIP"] = targetIp
 
         return state.copy(
             ip = targetIp,
@@ -279,6 +373,168 @@ object AssemblySimulator {
             flags = flags,
             explanation = explanation
         )
+    }
+
+    private fun isMemoryOperand(op: String): Boolean {
+        val trimmed = op.trim()
+        return trimmed.startsWith("[") || trimmed.contains("PTR [", ignoreCase = true)
+    }
+
+    private fun cleanMemoryExpression(op: String): String {
+        var clean = op.trim()
+        // Remove size specifiers like DWORD PTR, BYTE PTR, etc.
+        val ptrIdx = clean.indexOf("PTR", ignoreCase = true)
+        if (ptrIdx != -1) {
+            clean = clean.substring(ptrIdx + 3).trim()
+        }
+        val startBracket = clean.indexOf('[')
+        val endBracket = clean.lastIndexOf(']')
+        if (startBracket != -1 && endBracket != -1 && endBracket > startBracket) {
+            return clean.substring(startBracket + 1, endBracket).trim()
+        }
+        return clean
+    }
+
+    fun resolveEffectiveAddress(regs: Map<String, Int>, operand: String): Int {
+        val expr = cleanMemoryExpression(operand)
+        if (expr.isEmpty()) return 0
+
+        // Parse hex immediate directly e.g. 0x100 or decimal 100
+        val directNumber = parseNumericImmediate(expr)
+        if (directNumber != null) return directNumber
+
+        // Tokenize by + and -
+        // Format can be: Base + Index * Scale + Displacement
+        var total = 0
+        val tokens = mutableListOf<Pair<Char, String>>()
+        var currentToken = StringBuilder()
+        var currentSign = '+'
+
+        for (ch in expr) {
+            if (ch == '+' || ch == '-') {
+                if (currentToken.isNotBlank()) {
+                    tokens.add(Pair(currentSign, currentToken.toString().trim()))
+                    currentToken.clear()
+                }
+                currentSign = ch
+            } else {
+                currentToken.append(ch)
+            }
+        }
+        if (currentToken.isNotBlank()) {
+            tokens.add(Pair(currentSign, currentToken.toString().trim()))
+        }
+
+        for ((sign, term) in tokens) {
+            val termVal: Int = if (term.contains('*')) {
+                // SIB Index * Scale
+                val parts = term.split('*').map { it.trim() }
+                val regVal = getRegValue(regs, parts[0])
+                val scale = parseNumericImmediate(parts.getOrElse(1) { "1" }) ?: 1
+                regVal * scale
+            } else {
+                parseNumericImmediate(term) ?: getRegValue(regs, term)
+            }
+
+            if (sign == '+') {
+                total += termVal
+            } else {
+                total -= termVal
+            }
+        }
+        return total
+    }
+
+    private fun parseNumericImmediate(text: String): Int? {
+        val clean = text.trim()
+        return when {
+            clean.startsWith("0x", ignoreCase = true) -> clean.substring(2).toIntOrNull(16)
+            clean.startsWith("$") -> clean.substring(1).toIntOrNull(16)
+            clean.endsWith("h", ignoreCase = true) -> clean.dropLast(1).toIntOrNull(16)
+            else -> clean.toIntOrNull()
+        }
+    }
+
+    private fun getRegOrMemValue(regs: Map<String, Int>, memory: Map<Int, Int>, operand: String): Int {
+        return if (isMemoryOperand(operand)) {
+            val addr = resolveEffectiveAddress(regs, operand)
+            memory[addr] ?: 0
+        } else {
+            getRegValue(regs, operand)
+        }
+    }
+
+    private fun setRegisterValue(regs: MutableMap<String, Int>, dest: String, value: Int) {
+        val clean = dest.uppercase().replace("#", "").trim()
+        regs[clean] = value
+        
+        // Zero-extension & register aliasing in x86
+        when (clean) {
+            "EAX", "RAX" -> {
+                regs["EAX"] = value
+                regs["RAX"] = value
+                regs["AX"] = value and 0xFFFF
+                regs["AL"] = value and 0xFF
+                regs["AH"] = (value shr 8) and 0xFF
+            }
+            "EBX", "RBX" -> {
+                regs["EBX"] = value
+                regs["RBX"] = value
+                regs["BX"] = value and 0xFFFF
+                regs["BL"] = value and 0xFF
+                regs["BH"] = (value shr 8) and 0xFF
+            }
+            "ECX", "RCX" -> {
+                regs["ECX"] = value
+                regs["RCX"] = value
+                regs["CX"] = value and 0xFFFF
+                regs["CL"] = value and 0xFF
+                regs["CH"] = (value shr 8) and 0xFF
+            }
+            "EDX", "RDX" -> {
+                regs["EDX"] = value
+                regs["RDX"] = value
+                regs["DX"] = value and 0xFFFF
+                regs["DL"] = value and 0xFF
+                regs["DH"] = (value shr 8) and 0xFF
+            }
+            "ESI", "RSI" -> {
+                regs["ESI"] = value
+                regs["RSI"] = value
+                regs["SI"] = value and 0xFFFF
+                regs["SIL"] = value and 0xFF
+            }
+            "EDI", "RDI" -> {
+                regs["EDI"] = value
+                regs["RDI"] = value
+                regs["DI"] = value and 0xFFFF
+                regs["DIL"] = value and 0xFF
+            }
+            "ESP", "RSP" -> {
+                regs["ESP"] = value
+                regs["RSP"] = value
+            }
+            "EBP", "RBP" -> {
+                regs["EBP"] = value
+                regs["RBP"] = value
+            }
+            "AL" -> {
+                val orig = regs["EAX"] ?: 0
+                val updated = (orig and 0xFFFFFF00.toInt()) or (value and 0xFF)
+                regs["EAX"] = updated
+                regs["RAX"] = updated
+                regs["AX"] = updated and 0xFFFF
+                regs["AL"] = value and 0xFF
+            }
+            "AH" -> {
+                val orig = regs["EAX"] ?: 0
+                val updated = (orig and 0xFFFF00FF.toInt()) or ((value and 0xFF) shl 8)
+                regs["EAX"] = updated
+                regs["RAX"] = updated
+                regs["AX"] = updated and 0xFFFF
+                regs["AH"] = value and 0xFF
+            }
+        }
     }
 
     // --- ARM ENGINE ---

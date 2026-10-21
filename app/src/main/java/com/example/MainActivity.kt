@@ -55,6 +55,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             MyApplicationTheme {
                 var currentRoute by remember { mutableStateOf("syllabus") }
+                var activeTutorialLesson by remember { mutableStateOf<com.example.model.Lesson?>(null) }
                 
                 Scaffold(
                     modifier = Modifier.fillMaxSize(),
@@ -67,7 +68,7 @@ class MainActivity : ComponentActivity() {
                         ) {
                             // Syllabus Navigation
                             NavigationBarItem(
-                                selected = currentRoute == "syllabus" || currentRoute == "study",
+                                selected = currentRoute == "syllabus" || currentRoute == "study" || currentRoute == "x86_curriculum" || currentRoute == "interactive_tutorial",
                                 onClick = { currentRoute = "syllabus" },
                                 label = {
                                     Text(
@@ -160,6 +161,39 @@ class MainActivity : ComponentActivity() {
                                     onTopicSelected = { topic ->
                                         viewModel.selectTopic(topic)
                                         currentRoute = "study"
+                                    },
+                                    onOpenX86Curriculum = {
+                                        currentRoute = "x86_curriculum"
+                                    },
+                                    onOpenTutorialLesson = { lesson ->
+                                        activeTutorialLesson = lesson
+                                        currentRoute = "interactive_tutorial"
+                                    }
+                                )
+                            }
+                            "x86_curriculum" -> {
+                                com.example.ui.screens.X86CurriculumComponent(
+                                    viewModel = viewModel,
+                                    onBack = { currentRoute = "syllabus" },
+                                    onLaunchSandboxWithCode = { code ->
+                                        viewModel.updatePlaygroundCode(code)
+                                        viewModel.resetCpu(com.example.model.Architecture.X86)
+                                        currentRoute = "sandbox"
+                                    }
+                                )
+                            }
+                            "interactive_tutorial" -> {
+                                val tutorial = activeTutorialLesson ?: com.example.model.X86TutorialLessons.LESSONS.first()
+                                com.example.ui.screens.InteractiveLessonTutorialLayout(
+                                    lesson = tutorial,
+                                    viewModel = viewModel,
+                                    onBack = { currentRoute = "syllabus" },
+                                    onNextLesson = { next -> activeTutorialLesson = next },
+                                    onPreviousLesson = { prev -> activeTutorialLesson = prev },
+                                    onOpenInSandbox = { code ->
+                                        viewModel.updatePlaygroundCode(code)
+                                        viewModel.resetCpu(com.example.model.Architecture.X86)
+                                        currentRoute = "sandbox"
                                     }
                                 )
                             }

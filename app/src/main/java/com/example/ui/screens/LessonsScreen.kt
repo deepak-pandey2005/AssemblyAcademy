@@ -8,8 +8,10 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
@@ -21,6 +23,7 @@ import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -31,12 +34,16 @@ import com.example.model.Chapter
 import com.example.model.Syllabus
 import com.example.model.Topic
 import com.example.ui.theme.*
+import com.example.model.Lesson
+import com.example.model.X86TutorialLessons
 import com.example.viewmodel.AssemblyViewModel
 
 @Composable
 fun LessonsScreen(
     viewModel: AssemblyViewModel,
     onTopicSelected: (Topic) -> Unit,
+    onOpenX86Curriculum: () -> Unit = {},
+    onOpenTutorialLesson: (Lesson) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val selectedArch by viewModel.selectedArchitecture.collectAsState()
@@ -296,6 +303,226 @@ fun LessonsScreen(
                                     color = MutedText,
                                     fontSize = 12.sp,
                                     fontFamily = FontFamily.Monospace
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            // --- Featured Structured Curriculum Banner (x86 Registers & Memory) ---
+            item {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp)
+                        .padding(bottom = 16.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .clickable { onOpenX86Curriculum() }
+                        .testTag("featured_x86_curriculum_card"),
+                    colors = CardDefaults.cardColors(containerColor = TerminalDarkGray),
+                    border = BorderStroke(1.5.dp, NeonGreen)
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Surface(
+                                color = NeonGreen.copy(alpha = 0.15f),
+                                shape = RoundedCornerShape(4.dp)
+                            ) {
+                                Text(
+                                    text = "FEATURED TRACK",
+                                    color = NeonGreen,
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    fontFamily = FontFamily.Monospace,
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                                )
+                            }
+
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(
+                                    text = "OPEN LAB",
+                                    color = NeonGreen,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    fontFamily = FontFamily.Monospace
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                                    contentDescription = "Open",
+                                    tint = NeonGreen,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(10.dp))
+                        Text(
+                            text = "x86 Curriculum: Registers & Memory Operations",
+                            color = PureWhite,
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "Master general-purpose registers (RAX..R15), 64-to-8-bit slicing, SIB memory addressing [Base + Index*Scale + Disp], and LEA vs MOV.",
+                            color = MutedText,
+                            fontSize = 12.sp,
+                            lineHeight = 17.sp
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Surface(color = TerminalBlack, shape = RoundedCornerShape(4.dp)) {
+                                Text("4 Modules", color = CyberCyan, fontSize = 11.sp, fontFamily = FontFamily.Monospace, modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
+                            }
+                            Surface(color = TerminalBlack, shape = RoundedCornerShape(4.dp)) {
+                                Text("Bit Slicer", color = PureWhite, fontSize = 11.sp, fontFamily = FontFamily.Monospace, modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
+                            }
+                            Surface(color = TerminalBlack, shape = RoundedCornerShape(4.dp)) {
+                                Text("SIB Calculator", color = AlertOrange, fontSize = 11.sp, fontFamily = FontFamily.Monospace, modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
+                            }
+                        }
+                    }
+                }
+            }
+
+            // --- Interactive x86 Assembly Tutorials (Code Snippets & Conceptual Explanations) ---
+            item {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp)
+                        .padding(bottom = 16.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Default.PlayCircle,
+                                contentDescription = "Tutorials",
+                                tint = CyberCyan,
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = "INTERACTIVE x86 TUTORIALS",
+                                color = CyberCyan,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Bold,
+                                fontFamily = FontFamily.Monospace
+                            )
+                        }
+                        Text(
+                            text = "${X86TutorialLessons.LESSONS.size} Lessons",
+                            color = MutedText,
+                            fontSize = 11.sp,
+                            fontFamily = FontFamily.Monospace
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    X86TutorialLessons.LESSONS.forEach { tutorial ->
+                        val isDone = completedLessons.any { it.topicId == tutorial.id }
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                                .clickable { onOpenTutorialLesson(tutorial) }
+                                .testTag("tutorial_item_${tutorial.id}"),
+                            colors = CardDefaults.cardColors(containerColor = TerminalDarkGray),
+                            border = BorderStroke(1.dp, if (isDone) NeonGreen.copy(alpha = 0.6f) else TerminalLightGray)
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Surface(
+                                    color = if (isDone) NeonGreen.copy(alpha = 0.15f) else TerminalBlack,
+                                    shape = CircleShape,
+                                    border = BorderStroke(1.dp, if (isDone) NeonGreen else CyberCyan.copy(alpha = 0.5f)),
+                                    modifier = Modifier.size(36.dp)
+                                ) {
+                                    Box(contentAlignment = Alignment.Center) {
+                                        Icon(
+                                            imageVector = if (isDone) Icons.Default.Check else Icons.Default.Code,
+                                            contentDescription = "Lesson Icon",
+                                            tint = if (isDone) NeonGreen else CyberCyan,
+                                            modifier = Modifier.size(18.dp)
+                                        )
+                                    }
+                                }
+
+                                Spacer(modifier = Modifier.width(12.dp))
+
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = tutorial.title,
+                                        color = PureWhite,
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                    if (tutorial.subtitle.isNotBlank()) {
+                                        Text(
+                                            text = tutorial.subtitle,
+                                            color = MutedText,
+                                            fontSize = 11.sp,
+                                            maxLines = 1
+                                        )
+                                    }
+                                    Spacer(modifier = Modifier.height(4.dp))
+                                    Row(
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Surface(
+                                            color = TerminalBlack,
+                                            shape = RoundedCornerShape(3.dp)
+                                        ) {
+                                            Text(
+                                                text = tutorial.difficulty,
+                                                color = CyberCyan,
+                                                fontSize = 9.sp,
+                                                fontFamily = FontFamily.Monospace,
+                                                modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
+                                            )
+                                        }
+                                        Text(
+                                            text = "• ${tutorial.estimatedMinutes} min",
+                                            color = MutedText,
+                                            fontSize = 10.sp,
+                                            fontFamily = FontFamily.Monospace
+                                        )
+                                        if (tutorial.registersInvolved.isNotEmpty()) {
+                                            Text(
+                                                text = "• ${tutorial.registersInvolved.joinToString()}",
+                                                color = NeonGreen,
+                                                fontSize = 10.sp,
+                                                fontFamily = FontFamily.Monospace
+                                            )
+                                        }
+                                    }
+                                }
+
+                                Icon(
+                                    imageVector = Icons.Default.ChevronRight,
+                                    contentDescription = "Open",
+                                    tint = MutedText,
+                                    modifier = Modifier.size(20.dp)
                                 )
                             }
                         }

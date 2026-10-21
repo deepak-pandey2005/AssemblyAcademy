@@ -20,8 +20,15 @@ class GreetingScreenshotTest {
   @get:Rule val composeTestRule = createComposeRule()
 
   @Test
-  fun greeting_screenshot() {
-    composeTestRule.setContent { MyApplicationTheme { Greeting("Robolectric") } }
+  fun app_theme_screenshot() {
+    composeTestRule.setContent {
+      MyApplicationTheme {
+        androidx.compose.material3.Text(
+          text = "Assembly Academy",
+          color = com.example.ui.theme.NeonGreen
+        )
+      }
+    }
 
     composeTestRule.onRoot().captureRoboImage(filePath = "src/test/screenshots/greeting.png")
   }
