@@ -82,7 +82,28 @@ check_prerequisites() {
     # 4. Check & Auto-Configure Android SDK Location
     configure_android_sdk
 
+    # 5. Check & Auto-Restore debug.keystore
+    ensure_debug_keystore
+
     echo ""
+}
+
+ensure_debug_keystore() {
+    if [ ! -f "debug.keystore" ]; then
+        if [ -f "debug.keystore.base64" ]; then
+            echo -e "  ${CYAN}ℹ Restoring debug.keystore from debug.keystore.base64...${NC}"
+            base64 -d debug.keystore.base64 > debug.keystore 2>/dev/null || base64 --decode debug.keystore.base64 > debug.keystore
+            echo -e "  ${GREEN}✓${NC} debug.keystore restored successfully."
+        elif command -v keytool &> /dev/null; then
+            echo -e "  ${CYAN}ℹ Generating debug.keystore with keytool...${NC}"
+            keytool -genkey -v -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US" 2>/dev/null || true
+            echo -e "  ${GREEN}✓${NC} Generated debug.keystore."
+        else
+            echo -e "  ${YELLOW}! Warning: debug.keystore not found.${NC}"
+        fi
+    else
+        echo -e "  ${GREEN}✓${NC} Debug signing keystore detected: ${BOLD}debug.keystore${NC}"
+    fi
 }
 
 check_java_version() {

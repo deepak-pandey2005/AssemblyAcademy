@@ -515,6 +515,13 @@ fun AndroidBuildGuideDialog(
                                     fix = "Run ./build_and_install.sh (auto-detects SDK) or run: echo \"sdk.dir=\$HOME/Android/Sdk\" > local.properties"
                                 )
                             }
+                            item {
+                                FixItem(
+                                    error = "debug.keystore not found for debugConfig",
+                                    cause = "Git ignores binary keystore files; debug.keystore.base64 is bundled instead.",
+                                    fix = "Run ./build_and_install.sh (auto-restores) or run: base64 -d debug.keystore.base64 > debug.keystore"
+                                )
+                            }
                         }
                     }
                 }

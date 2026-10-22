@@ -212,3 +212,14 @@ If you are using Google AI Studio in the browser:
   echo "sdk.dir=$HOME/Android/Sdk" > local.properties
   ```
 
+### 6. `Keystore file 'debug.keystore' not found for signing config 'debugConfig'`
+* **Cause**: Git ignores `.keystore` files for safety, but the base64-encoded keystore `debug.keystore.base64` is bundled in the repository root.
+* **Fix (Method A — Automated script)**:
+  Run `./build_and_install.sh` which now automatically restores `debug.keystore` from `debug.keystore.base64`.
+* **Fix (Method B — One-liner in terminal)**:
+  Inside the project directory, decode the bundled keystore:
+  ```bash
+  base64 -d debug.keystore.base64 > debug.keystore
+  ```
+
+
