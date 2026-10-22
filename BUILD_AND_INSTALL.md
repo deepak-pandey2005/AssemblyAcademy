@@ -190,3 +190,25 @@ If you are using Google AI Studio in the browser:
 ### 4. Google Play Protect Warning ("Blocked by Play Protect")
 * **Cause**: The app is compiled in debug mode with a development certificate.
 * **Fix**: Tap **"More details"** on the phone prompt, then tap **"Install anyway"**.
+
+### 5. `SDK location not found` (ANDROID_HOME / local.properties)
+* **Cause**: The terminal environment does not know where the Android SDK is installed on your computer.
+* **Fix (Method A — Automated script)**:
+  Run `./build_and_install.sh` which now auto-detects your Android SDK at `$HOME/Android/Sdk` and auto-configures `local.properties`.
+* **Fix (Method B — Set Environment Variable in bash)**:
+  ```bash
+  # Linux (Android Studio default path):
+  export ANDROID_HOME=$HOME/Android/Sdk
+  echo "export ANDROID_HOME=\$HOME/Android/Sdk" >> ~/.bashrc
+  echo "export PATH=\$PATH:\$ANDROID_HOME/platform-tools:\$ANDROID_HOME/cmdline-tools/latest/bin" >> ~/.bashrc
+  source ~/.bashrc
+
+  # macOS:
+  export ANDROID_HOME=$HOME/Library/Android/sdk
+  ```
+* **Fix (Method C — One-line local.properties)**:
+  Inside the project directory, run:
+  ```bash
+  echo "sdk.dir=$HOME/Android/Sdk" > local.properties
+  ```
+

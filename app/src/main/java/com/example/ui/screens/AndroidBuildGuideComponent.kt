@@ -508,6 +508,13 @@ fun AndroidBuildGuideDialog(
                                     fix = "Set JAVA_HOME to JDK 17+ or install OpenJDK 17: sudo apt install openjdk-17-jdk"
                                 )
                             }
+                            item {
+                                FixItem(
+                                    error = "SDK location not found (ANDROID_HOME)",
+                                    cause = "The terminal does not know where the Android SDK is located.",
+                                    fix = "Run ./build_and_install.sh (auto-detects SDK) or run: echo \"sdk.dir=\$HOME/Android/Sdk\" > local.properties"
+                                )
+                            }
                         }
                     }
                 }
