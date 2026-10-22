@@ -59,15 +59,8 @@ print_help() {
 check_prerequisites() {
     echo -e "${CYAN}[1/3] Checking Environment Prerequisites...${NC}"
 
-    # 1. Check Java
-    if command -v java &> /dev/null; then
-        JAVA_VER=$(java -version 2>&1 | head -n 1 | awk -F '"' '{print $2}')
-        echo -e "  ${GREEN}✓${NC} Java Runtime detected: ${BOLD}$JAVA_VER${NC}"
-    else
-        echo -e "  ${RED}✗ Java is not installed or not in PATH!${NC}"
-        echo -e "    Please install JDK 17 or higher: https://adoptium.net/"
-        exit 1
-    fi
+    # 1. Check & Validate Java Version (AGP requires JDK 17 or 21)
+    check_java_version
 
     # 2. Check Gradle
     if [ -n "$GRADLE_CMD" ]; then
@@ -90,6 +83,103 @@ check_prerequisites() {
     configure_android_sdk
 
     echo ""
+}
+
+check_java_version() {
+    local java_bin=""
+    local java_major=0
+
+    # Function to extract major version from a java binary
+    get_java_major() {
+        local jbin="$1"
+        "$jbin" -version 2>&1 | head -n 1 | awk -F '"' '{print $2}' | awk -F '.' '{
+            if ($1 == "1") { print $2 } else { print $1 }
+        }'
+    }
+
+    if [ -n "$JAVA_HOME" ] && [ -x "$JAVA_HOME/bin/java" ]; then
+        java_bin="$JAVA_HOME/bin/java"
+    elif command -v java &> /dev/null; then
+        java_bin=$(command -v java)
+    fi
+
+    if [ -n "$java_bin" ]; then
+        java_major=$(get_java_major "$java_bin")
+    else
+        echo -e "  ${RED}✗ Java is not installed or not in PATH!${NC}"
+        echo -e "    Please install JDK 17 or JDK 21: https://adoptium.net/"
+        exit 1
+    fi
+
+    # Android Gradle Plugin officially supports JDK 17 and JDK 21.
+    # Versions like Java 25, 26, 27+ break AGP's JdkImageTransform jlink execution!
+    if [ -z "$java_major" ] || [ "$java_major" -gt 21 ] || [ "$java_major" -lt 17 ]; then
+        echo -e "  ${YELLOW}! Current Java version ($java_major) is incompatible with Android Gradle Plugin.${NC}"
+        echo -e "    (Java 27 causes jlink module transformation errors. AGP requires JDK 17 or JDK 21)."
+        echo -e "    Searching system for installed JDK 17 or JDK 21..."
+
+        local candidate_dirs=(
+            "/usr/lib/jvm/java-17-openjdk"
+            "/usr/lib/jvm/java-17-openjdk-amd64"
+            "/usr/lib/jvm/java-21-openjdk"
+            "/usr/lib/jvm/java-21-openjdk-amd64"
+            "/usr/lib/jvm/temurin-17-jdk"
+            "/usr/lib/jvm/temurin-21-jdk"
+            "/opt/android-studio/jbr"
+            "/usr/local/android-studio/jbr"
+            "/snap/android-studio/current/jbr"
+            "$HOME/.local/share/JetBrains/Toolbox/apps/android-studio/jbr"
+            "$HOME/Android/Sdk/jbr"
+        )
+
+        local found_compatible=""
+        for cdir in "${candidate_dirs[@]}"; do
+            if [ -x "$cdir/bin/java" ]; then
+                local cmaj
+                cmaj=$(get_java_major "$cdir/bin/java")
+                if [ -n "$cmaj" ] && [ "$cmaj" -ge 17 ] && [ "$cmaj" -le 21 ]; then
+                    found_compatible="$cdir"
+                    break
+                fi
+            fi
+        done
+
+        # Also search in /usr/lib/jvm/*
+        if [ -z "$found_compatible" ] && [ -d "/usr/lib/jvm" ]; then
+            for cdir in /usr/lib/jvm/*17* /usr/lib/jvm/*21*; do
+                if [ -d "$cdir" ] && [ -x "$cdir/bin/java" ]; then
+                    local cmaj
+                    cmaj=$(get_java_major "$cdir/bin/java")
+                    if [ -n "$cmaj" ] && [ "$cmaj" -ge 17 ] && [ "$cmaj" -le 21 ]; then
+                        found_compatible="$cdir"
+                        break
+                    fi
+                fi
+            done
+        fi
+
+        if [ -n "$found_compatible" ]; then
+            export JAVA_HOME="$found_compatible"
+            export PATH="$JAVA_HOME/bin:$PATH"
+            local new_ver
+            new_ver=$("$JAVA_HOME/bin/java" -version 2>&1 | head -n 1 | awk -F '"' '{print $2}')
+            echo -e "  ${GREEN}✓${NC} Auto-switched JAVA_HOME to compatible JDK: ${BOLD}$found_compatible${NC} ($new_ver)"
+        else
+            echo -e "  ${RED}✗ No installed JDK 17 or JDK 21 found on this machine!${NC}"
+            echo ""
+            echo -e "  ${BOLD}To fix this, install OpenJDK 17 on your Linux system:${NC}"
+            echo "    Ubuntu/Debian:  sudo apt install openjdk-17-jdk"
+            echo "    Fedora:         sudo dnf install java-17-openjdk-devel"
+            echo "    Arch Linux:     sudo pacman -S jdk17-openjdk"
+            echo ""
+            echo "  Then re-run this script: ./build_and_install.sh"
+            exit 1
+        fi
+    else
+        local full_ver
+        full_ver=$("$java_bin" -version 2>&1 | head -n 1 | awk -F '"' '{print $2}')
+        echo -e "  ${GREEN}✓${NC} Java Runtime detected: ${BOLD}$full_ver${NC} (Java $java_major)"
+    fi
 }
 
 configure_android_sdk() {
@@ -213,7 +303,7 @@ check_adb_device() {
 
 build_debug_apk() {
     echo -e "${CYAN}[2/3] Building Debug APK with Gradle...${NC}"
-    $GRADLE_CMD :app:assembleDebug
+    $GRADLE_CMD :app:assembleDebug --no-configuration-cache
 
     if [ -f "$DEBUG_APK" ]; then
         APK_SIZE=$(du -h "$DEBUG_APK" | cut -f1)
@@ -228,7 +318,7 @@ build_debug_apk() {
 
 build_release_apk() {
     echo -e "${CYAN}Building Release APK...${NC}"
-    $GRADLE_CMD :app:assembleRelease
+    $GRADLE_CMD :app:assembleRelease --no-configuration-cache
 
     echo -e "${GREEN}✓ Release build complete! Check app/build/outputs/apk/release/${NC}"
 }
@@ -310,7 +400,7 @@ case "$1" in
         ;;
     --clean)
         echo -e "${CYAN}Cleaning build caches...${NC}"
-        $GRADLE_CMD clean
+        $GRADLE_CMD clean --no-configuration-cache
         echo -e "${GREEN}✓ Clean complete.${NC}"
         exit 0
         ;;
