@@ -29,6 +29,8 @@ data class X86RegisterSnapshot(
     val gs: Int = 0x0000,
     val cr0: Int = 0x00000010, // ET flag default set
     val cr3: Int = 0x00000000,
+    val memory: Map<Int, Int> = mapOf(100 to 42, 104 to 99, 108 to 15, 112 to 256, 116 to 88, 120 to 777),
+    val modifiedMemoryAddresses: Set<Int> = emptySet(),
     val cycleCount: Long = 0,
     val lastModifiedRegister: String = "",
     val lastAction: String = "CPU Power-On Initialized"
@@ -389,6 +391,36 @@ class X86RegisterStateManager(
     }
 
     /**
+     * Writes a 32-bit dword value into simulated RAM at the specified address.
+     */
+    fun setMemoryValue(address: Int, value: Int, reason: String = "Manual Memory Write") {
+        saveSnapshotForUndo()
+        val current = _state.value
+        val updatedMem = current.memory.toMutableMap()
+        val aligned = (address / 4) * 4
+        val oldVal = updatedMem[aligned] ?: 0
+        updatedMem[aligned] = value
+
+        val modifiedSet = setOf(aligned, aligned + 1, aligned + 2, aligned + 3)
+        val finalized = current.copy(
+            memory = updatedMem,
+            modifiedMemoryAddresses = modifiedSet,
+            cycleCount = current.cycleCount + 1,
+            lastAction = "$reason (0x${aligned.toString(16).uppercase().padStart(4, '0')}: $oldVal -> $value)"
+        )
+        recordTransition("RAM[0x${aligned.toString(16).uppercase()}]", oldVal, value, reason, finalized.cycleCount)
+        _state.value = finalized
+    }
+
+    /**
+     * Reads a 32-bit dword value from simulated RAM.
+     */
+    fun getMemoryValue(address: Int): Int {
+        val aligned = (address / 4) * 4
+        return _state.value.memory[aligned] ?: 0
+    }
+
+    /**
      * Toggles an individual bit (0 to 31) in a 32-bit register.
      */
     fun toggleRegisterBit(registerName: String, bitIndex: Int) {
@@ -466,10 +498,43 @@ class X86RegisterStateManager(
             }
             "MOV" -> {
                 if (operands.size >= 2) {
-                    val dest = operands[0].uppercase()
-                    val src = operands[1].uppercase()
+                    val dest = operands[0].uppercase().trim()
+                    val src = operands[1].uppercase().trim()
+                    val isDestMem = dest.startsWith("[") && dest.endsWith("]")
+                    val isSrcMem = src.startsWith("[") && src.endsWith("]")
+
+                    if (isDestMem) {
+                        val addrExpr = dest.substring(1, dest.length - 1).trim()
+                        val addr = resolveAddress(addrExpr)
+                        val srcVal = resolveValue(src)
+                        setMemoryValue(addr, srcVal, "MOV [$addr]: Wrote $srcVal to RAM")
+                    } else if (isSrcMem) {
+                        val addrExpr = src.substring(1, src.length - 1).trim()
+                        val addr = resolveAddress(addrExpr)
+                        val memVal = getMemoryValue(addr)
+                        setRegister(dest, memVal, "MOV $dest, [$addr]: Loaded $memVal from RAM")
+                    } else {
+                        val srcVal = resolveValue(src)
+                        setRegister(dest, srcVal, "MOV: Transferred $srcVal into $dest")
+                    }
+                }
+            }
+            "PUSH" -> {
+                if (operands.isNotEmpty()) {
+                    val src = operands[0].uppercase().trim()
                     val srcVal = resolveValue(src)
-                    setRegister(dest, srcVal, "MOV: Transferred $srcVal into $dest")
+                    val newEsp = _state.value.esp - 4
+                    setRegister("ESP", newEsp, "PUSH: Decremented ESP to $newEsp")
+                    setMemoryValue(newEsp, srcVal, "PUSH: Stored $srcVal at [ESP 0x${newEsp.toString(16).uppercase()}]")
+                }
+            }
+            "POP" -> {
+                if (operands.isNotEmpty()) {
+                    val dest = operands[0].uppercase().trim()
+                    val currentEsp = _state.value.esp
+                    val memVal = getMemoryValue(currentEsp)
+                    setRegister(dest, memVal, "POP: Read $memVal from [ESP 0x${currentEsp.toString(16).uppercase()}]")
+                    setRegister("ESP", currentEsp + 4, "POP: Incremented ESP to ${currentEsp + 4}")
                 }
             }
             "ADD" -> {
@@ -747,7 +812,23 @@ class X86RegisterStateManager(
         preset.setupAction(this)
     }
 
-    fun syncFromMap(map: Map<String, Int>, flags: Map<String, Boolean> = emptyMap()) {
+    private fun resolveAddress(expr: String): Int {
+        val clean = expr.uppercase().trim()
+        val regVal = _state.value.getRegisterValue(clean)
+        if (regVal != 0 || isKnownRegister(clean)) return regVal
+        return when {
+            clean.startsWith("0X") -> clean.substring(2).toLongOrNull(16)?.toInt() ?: 0
+            clean.endsWith("H") -> clean.dropLast(1).toLongOrNull(16)?.toInt() ?: 0
+            else -> clean.toIntOrNull() ?: 0
+        }
+    }
+
+    fun syncFromMap(
+        map: Map<String, Int>,
+        flags: Map<String, Boolean> = emptyMap(),
+        memory: Map<Int, Int>? = null,
+        modifiedAddrs: Set<Int>? = null
+    ) {
         var current = _state.value
         map.forEach { (name, value) ->
             when (name.uppercase()) {
@@ -767,6 +848,12 @@ class X86RegisterStateManager(
         flags["CF"]?.let { eflags = setFlagBit(eflags, 0, it) }
         flags["SF"]?.let { eflags = setFlagBit(eflags, 7, it) }
         flags["OF"]?.let { eflags = setFlagBit(eflags, 11, it) }
+        if (memory != null) {
+            current = current.copy(memory = memory)
+        }
+        if (modifiedAddrs != null) {
+            current = current.copy(modifiedMemoryAddresses = modifiedAddrs)
+        }
         _state.value = current.copy(eflags = eflags or 0x0002)
     }
 

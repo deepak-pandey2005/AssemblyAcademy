@@ -159,7 +159,7 @@ class AssemblyViewModel(application: Application) : AndroidViewModel(application
         _previousMemory.value = emptyMap()
         _modifiedMemoryAddresses.value = emptySet()
         _cpuState.value = AssemblySimulator.createInitialState(arch)
-        x86StateManager.syncFromMap(_cpuState.value.registers, _cpuState.value.flags)
+        x86StateManager.syncFromMap(_cpuState.value.registers, _cpuState.value.flags, _cpuState.value.memory, emptySet())
     }
 
     fun toggleBreakpoint(lineIndex: Int) {
@@ -323,7 +323,7 @@ class AssemblyViewModel(application: Application) : AndroidViewModel(application
         _modifiedMemoryAddresses.value = changedMem
 
         _cpuState.value = nextState
-        x86StateManager.syncFromMap(nextState.registers, nextState.flags)
+        x86StateManager.syncFromMap(nextState.registers, nextState.flags, nextState.memory, changedMem)
 
         // Record execution count in stats
         viewModelScope.launch {
@@ -337,8 +337,12 @@ class AssemblyViewModel(application: Application) : AndroidViewModel(application
         currentRegs.putAll(snapshot.toSimulatorMap())
         _cpuState.value = _cpuState.value.copy(
             registers = currentRegs,
-            flags = snapshot.toFlagsMap()
+            flags = snapshot.toFlagsMap(),
+            memory = snapshot.memory
         )
+        if (snapshot.modifiedMemoryAddresses.isNotEmpty()) {
+            _modifiedMemoryAddresses.value = snapshot.modifiedMemoryAddresses
+        }
     }
 
     fun stepBackward() {

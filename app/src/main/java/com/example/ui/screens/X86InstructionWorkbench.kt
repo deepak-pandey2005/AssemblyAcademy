@@ -27,6 +27,7 @@ import androidx.compose.ui.unit.sp
 import com.example.model.Architecture
 import com.example.simulator.AssemblySimulator
 import com.example.simulator.CpuState
+import com.example.ui.editor.X86SyntaxHighlighter
 import com.example.ui.theme.*
 
 data class InstructionScenario(
@@ -277,8 +278,7 @@ fun X86InstructionWorkbench(
                         )
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(
-                            text = line,
-                            color = if (isActive) PureWhite else PureWhite.copy(alpha = 0.7f),
+                            text = X86SyntaxHighlighter.highlight(line, X86SyntaxHighlighter.DarkTerminalTheme),
                             fontFamily = FontFamily.Monospace,
                             fontSize = 12.sp,
                             fontWeight = if (isActive) FontWeight.Bold else FontWeight.Normal

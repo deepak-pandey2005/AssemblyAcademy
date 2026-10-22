@@ -664,7 +664,24 @@ fun X86ReactiveDashboardScreen(
 
             Spacer(modifier = Modifier.height(14.dp))
 
-            // --- 7. LINK TO DEBUGGER & EXTERNAL SIMULATOR ---
+            // --- 7. SCROLLABLE MEMORY TABLE COMPONENT ---
+            ScrollableMemoryTable(
+                memory = snapshot.memory,
+                modifiedAddresses = snapshot.modifiedMemoryAddresses,
+                registers = snapshot.toSimulatorMap(),
+                onUpdateValue = { addr, newVal ->
+                    stateManager.setMemoryValue(addr, newVal)
+                    viewModel.syncFromX86StateManager()
+                },
+                cycleCount = snapshot.cycleCount,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(390.dp)
+            )
+
+            Spacer(modifier = Modifier.height(14.dp))
+
+            // --- 8. LINK TO DEBUGGER & EXTERNAL SIMULATOR ---
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)

@@ -29,6 +29,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.model.Architecture
+import com.example.ui.editor.X86AssemblyEditor
 import com.example.ui.theme.*
 import com.example.viewmodel.AssemblyViewModel
 import kotlinx.coroutines.launch
@@ -155,95 +156,18 @@ fun PlaygroundScreen(
                 .verticalScroll(rememberScrollState())
         ) {
             
-            // PANEL 1: Interactive Code Workspace
-            Box(
+            // PANEL 1: Interactive Code Workspace with x86 Syntax Highlighting
+            X86AssemblyEditor(
+                value = playgroundCode,
+                onValueChange = { viewModel.updatePlaygroundCode(it) },
+                activeLineIndex = cpuState.ip,
+                breakpoints = breakpoints,
+                onToggleBreakpoint = { viewModel.toggleBreakpoint(it) },
+                height = 250.dp,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(260.dp)
-                    .background(TerminalBlack)
-            ) {
-                Row(modifier = Modifier.fillMaxSize()) {
-                    // Line number Gutter on the left
-                    Column(
-                        modifier = Modifier
-                            .fillMaxHeight()
-                            .width(44.dp)
-                            .background(TerminalDarkGray)
-                            .padding(vertical = 12.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        val totalLinesCount = playgroundCode.lines().size.coerceAtLeast(1)
-                        for (i in 0 until totalLinesCount) {
-                            val isActiveLine = i == cpuState.ip
-                            val hasBreakpoint = breakpoints.contains(i)
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .height(20.dp)
-                                    .clickable { viewModel.toggleBreakpoint(i) },
-                                horizontalArrangement = Arrangement.Center,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                if (hasBreakpoint) {
-                                    Box(
-                                        modifier = Modifier
-                                            .size(6.dp)
-                                            .clip(RoundedCornerShape(3.dp))
-                                            .background(BrightPink)
-                                    )
-                                    Spacer(modifier = Modifier.width(4.dp))
-                                }
-                                Text(
-                                    text = (i + 1).toString(),
-                                    color = if (isActiveLine) NeonGreen else if (hasBreakpoint) BrightPink else MutedText,
-                                    fontFamily = FontFamily.Monospace,
-                                    fontSize = 11.sp,
-                                    fontWeight = if (isActiveLine || hasBreakpoint) FontWeight.Bold else FontWeight.Normal
-                                )
-                            }
-                        }
-                    }
-
-                    // Actual code content textfield with live pointer highlighting
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .fillMaxHeight()
-                            .padding(vertical = 12.dp, horizontal = 12.dp)
-                    ) {
-                        // Drawing line pointer background highlights in real time
-                        Column(modifier = Modifier.fillMaxSize()) {
-                            playgroundCode.lines().forEachIndexed { idx, _ ->
-                                val isActiveLine = idx == cpuState.ip
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .height(20.dp)
-                                        .background(
-                                            if (isActiveLine) NeonGreen.copy(alpha = 0.15f) else Color.Transparent
-                                        )
-                                )
-                            }
-                        }
-
-                        // Code Editor Input
-                        BasicTextField(
-                            value = playgroundCode,
-                            onValueChange = { viewModel.updatePlaygroundCode(it) },
-                            textStyle = TextStyle(
-                                color = PureWhite,
-                                fontSize = 13.sp,
-                                fontFamily = FontFamily.Monospace,
-                                lineHeight = 20.sp
-                            ),
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .background(Color.Transparent),
-                            cursorBrush = SolidColor(NeonGreen)
-                        )
-                    }
-                }
-            }
+                    .padding(horizontal = 8.dp, vertical = 6.dp)
+            )
 
             // PANEL 2: Action Toolbar
             Row(
