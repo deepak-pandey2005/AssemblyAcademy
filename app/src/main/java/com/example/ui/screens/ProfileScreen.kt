@@ -64,6 +64,8 @@ fun ProfileScreen(
         else -> "Hardware Apprentice"
     }
 
+    var showBuildGuide by remember { mutableStateOf(false) }
+
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -159,6 +161,8 @@ fun ProfileScreen(
                         }
                     }
                 }
+                Spacer(modifier = Modifier.height(16.dp))
+                AndroidBuildGuideCard(onOpenGuide = { showBuildGuide = true })
                 Spacer(modifier = Modifier.height(20.dp))
             }
 
@@ -362,6 +366,12 @@ fun ProfileScreen(
                     }
                 }
             }
+        }
+
+        if (showBuildGuide) {
+            AndroidBuildGuideDialog(
+                onDismissRequest = { showBuildGuide = false }
+            )
         }
     }
 }
